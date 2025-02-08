@@ -1,9 +1,13 @@
 import customtkinter
 import home_page
+import io
 
 from tkinter import * # type: ignore
 from CTkListbox import * # type: ignore
 
+from datetime import datetime
+from fpdf import FPDF
+from utils import send_mail_with_pdf
 
 class TransactionsPage(Frame):
     def __init__(self, parent, user, db):
@@ -17,7 +21,7 @@ class TransactionsPage(Frame):
         # self.center_frame = Frame(self)
         # self.place(anchor="center")
 
-        label = Label(self, text="\nTransactions History\n\n", font=("Helvetica", 24))
+        label = Label(self, text="\nTransactions History\n", font=("Helvetica", 24))
         label.grid(row=0, pady=10, padx=5)
 
         self.tab_view = customtkinter.CTkTabview(master=self, fg_color= "#F0F0F0", text_color="white", width=620, height=400)
@@ -47,6 +51,9 @@ class TransactionsPage(Frame):
 
         home_button = customtkinter.CTkButton(self, text="Home", font=("Helvetica", 18), command=self.launch_home_page, width=180, height=40)
         home_button.grid(row=2, pady=10, padx = 10)
+
+        pdf_button = customtkinter.CTkButton(self, text="Export PDF", font=("Helvetica", 18), command=self.generate_and_send_statement, width=180, height=40)
+        pdf_button.grid(row=3, pady=10, padx=10)
 
 
     def display_transactions(self):
@@ -101,6 +108,36 @@ class TransactionsPage(Frame):
         else:
             line = "error"
         return line
+
+
+    def generate_and_send_statement(self):
+        user_email = self.db.get_email(self.uid)
+   
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Statement", ln=True, align="C")
+
+        pdf.ln(10)
+        pdf.cell(200, 10, txt=f"Account holder: {self.db.get_name(self.uid)}", ln=True)
+        pdf.cell(200, 10, txt=f"Date of generation: {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+        pdf.ln(5)
+
+        pdf.set_font("Arial", size=10)
+        
+        for tx in self.transactions:
+            pdf.cell(200, 8, txt=f"{tx[10]} | {tx[1]} | {tx[8]} {tx[9]}", ln=True)
+
+        pdf_data = pdf.output(dest='S').encode('latin1')
+        
+        pdf_buffer = io.BytesIO(pdf_data)
+         
+        send_mail_with_pdf(
+            to_address=user_email,
+            subject="Statement",
+            body="Hello, \nHere you can find the statement in PDF format.",
+            pdf_buffer=pdf_buffer
+        )
 
 
     def launch_home_page(self):

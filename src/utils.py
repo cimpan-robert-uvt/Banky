@@ -2,6 +2,7 @@ import requests
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from smtplib import SMTP
 
 
@@ -42,6 +43,25 @@ def send_mail(to_address, subject, body):
         server.starttls() 
         server.login(BANKY_EMAIL_ADDRESS, password)
         server.sendmail(BANKY_EMAIL_ADDRESS, to_address, message.as_string()) 
+
+
+def send_mail_with_pdf(to_address, subject, body, pdf_buffer):
+    password = open("mail_pass.txt", "r").read()
+
+    message = MIMEMultipart()
+    message["From"] = BANKY_EMAIL_ADDRESS
+    message["To"] = to_address
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain"))
+
+    pdf_attachment = MIMEApplication(pdf_buffer.read(), _subtype="pdf")
+    pdf_attachment.add_header("Content-Disposition", "attachment", filename="Statement.pdf")
+    message.attach(pdf_attachment)
+
+    with SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(BANKY_EMAIL_ADDRESS, password)
+        server.sendmail(BANKY_EMAIL_ADDRESS, to_address, message.as_string())
 
 
 def exchange(from_currency, to_currency, amount):
